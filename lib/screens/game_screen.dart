@@ -1,380 +1,356 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../models/item.dart';
-import '../models/player_data.dart';
+
+import '../controllers/game_controller.dart';
+import '../models/story_chapter.dart';
 import '../utils/constants.dart';
+import '../utils/responsive.dart';
+import '../utils/ui_helpers.dart';
+import '../widgets/app_card.dart';
 import '../widgets/board_widget.dart';
 import '../widgets/energy_bar.dart';
-import 'home_screen.dart';
+import '../widgets/level_progress_bar.dart';
+import '../widgets/stat_chip.dart';
 import 'story_screen.dart';
 
-class GameScreen extends StatefulWidget {
+class GameScreen extends StatelessWidget {
   const GameScreen({super.key});
-
-  @override
-  State<GameScreen> createState() => _GameScreenState();
-}
-
-class _GameScreenState extends State<GameScreen> {
-  final Random _random = Random();
-
-  @override
-  void initState() {
-    super.initState();
-    // Auto-regenerate energy periodically
-    Future.delayed(const Duration(seconds: 30), _tickEnergy);
-  }
-
-  void _tickEnergy() {
-    if (!mounted) return;
-    final controller = context.read<GameController>();
-    controller.player.regenerateEnergy();
-    controller.update();
-    controller.save();
-    Future.delayed(const Duration(seconds: 30), _tickEnergy);
-  }
-
-  void _onTileTap(int row, int col) {
-    final controller = context.read<GameController>();
-    final player = controller.player;
-    final board = player.board;
-
-    // If nothing selected → select this tile (if it has an item)
-    if (player.selectedRow == -1) {
-      if (board[row][col] != null) {
-        setState(() {
-          player.selectedRow = row;
-          player.selectedCol = col;
-        });
-      }
-      return;
-    }
-
-    // Same tile → deselect
-    if (player.selectedRow == row && player.selectedCol == col) {
-      setState(() {
-        player.selectedRow = -1;
-        player.selectedCol = -1;
-      });
-      return;
-    }
-
-    final selectedItem = board[player.selectedRow][player.selectedCol];
-    final targetItem = board[row][col];
-
-    // Check if adjacent
-    final isAdjacent = (row - player.selectedRow).abs() +
-            (col - player.selectedCol).abs() ==
-        1;
-
-    if (!isAdjacent) {
-      // Select the new one instead
-      if (targetItem != null) {
-        setState(() {
-          player.selectedRow = row;
-          player.selectedCol = col;
-        });
-      }
-      return;
-    }
-
-    // Attempt merge
-    if (selectedItem != null &&
-        targetItem != null &&
-        selectedItem.canMergeWith(targetItem)) {
-      final next = selectedItem.nextTier;
-      if (next != null) {
-        // Successful merge
-        board[row][col] = next;
-        board[player.selectedRow][player.selectedCol] = null;
-        player.totalMerges++;
-        player.unlockChapters();
-
-        // Small coin reward
-        player.coins += 5 + next.type.index * 2;
-
-        setState(() {
-          player.selectedRow = -1;
-          player.selectedCol = -1;
-        });
-
-        controller.update();
-        controller.save();
-
-        // Celebration feedback
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Merged into ${next.displayName}! ✨'),
-            backgroundColor: AppColors.success,
-            duration: const Duration(milliseconds: 1200),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-
-        // Check if new chapter unlocked
-        final newlyUnlocked = player.chapters
-            .where((c) => c.isUnlocked && c.requiredMerges == player.totalMerges)
-            .toList();
-        if (newlyUnlocked.isNotEmpty) {
-          Future.delayed(const Duration(milliseconds: 600), () {
-            if (mounted) {
-              showDialog(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text('New Chapter Unlocked! 📖'),
-                  content: Text('"${newlyUnlocked.first.title}" is now available.'),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) =>
-                                StoryScreen(chapters: player.chapters),
-                          ),
-                        );
-                      },
-                      child: const Text('Read Now'),
-                    ),
-                    TextButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: const Text('Later'),
-                    ),
-                  ],
-                ),
-              );
-            }
-          });
-        }
-      } else {
-        // Max tier
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('This is already the highest tier!'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } else {
-      // Not matching → just select the new tile
-      if (targetItem != null) {
-        setState(() {
-          player.selectedRow = row;
-          player.selectedCol = col;
-        });
-      }
-    }
-  }
-
-  void _spawnItem() {
-    final controller = context.read<GameController>();
-    final player = controller.player;
-
-    if (!player.spendEnergy(GameConstants.energyCostSpawn)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Not enough energy! Wait or add more.'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    // Find empty cells
-    final empties = <Point<int>>[];
-    for (int r = 0; r < GameConstants.boardSize; r++) {
-      for (int c = 0; c < GameConstants.boardSize; c++) {
-        if (player.board[r][c] == null) {
-          empties.add(Point(r, c));
-        }
-      }
-    }
-
-    if (empties.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Board is full! Merge some items first.'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      player.addEnergy(GameConstants.energyCostSpawn); // refund
-      return;
-    }
-
-    final spot = empties[_random.nextInt(empties.length)];
-
-    // Weighted spawn: mostly low tiers
-    final roll = _random.nextDouble();
-    ItemType type;
-    if (roll < 0.55) {
-      type = ItemType.seed;
-    } else if (roll < 0.85) {
-      type = ItemType.sprout;
-    } else {
-      type = ItemType.flower;
-    }
-
-    player.board[spot.x][spot.y] = MergeItem(type: type, level: 1);
-
-    setState(() {});
-    controller.update();
-    controller.save();
-  }
-
-  void _addEnergy() {
-    final controller = context.read<GameController>();
-    // In a real game this would show rewarded ad or IAP
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Get More Energy'),
-        content: const Text(
-          'In the full game this would open a rewarded ad or energy pack purchase.\n\nFor this prototype you receive +15 energy for free.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              controller.player.addEnergy(15);
-              controller.update();
-              controller.save();
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('+15 Energy!'),
-                  backgroundColor: AppColors.energy,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            child: const Text('Claim Free Energy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<GameController>();
     final player = controller.player;
 
+    final board = BoardWidget(
+      board: player.board,
+      selected: controller.selected,
+      onTileTap: (row, col) => _onTileTap(context, row, col),
+    );
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
         title: Text(
           'Whispering Gardens',
           style: GoogleFonts.playfairDisplay(fontWeight: FontWeight.w600),
         ),
         actions: [
           IconButton(
+            tooltip: 'Story chapters',
             icon: const Icon(Icons.menu_book),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => StoryScreen(chapters: player.chapters),
-                ),
-              );
-            },
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute<void>(builder: (_) => const StoryScreen()),
+            ),
           ),
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              EnergyBar(
-                energy: player.energy,
-                maxEnergy: player.maxEnergy,
-                onAddEnergy: _addEnergy,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 720 &&
+                constraints.maxWidth > constraints.maxHeight * 1.15;
+
+            if (wide) {
+              // Tablet / landscape: board on the left, controls on the right.
+              return Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    Expanded(child: board),
+                    const SizedBox(width: 24),
+                    SizedBox(
+                      width: 340,
+                      child: SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _StatusPanel(controller: controller, compact: false),
+                            const SizedBox(height: 16),
+                            _SpawnPanel(showHint: true),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final compact = context.isShortHeight;
+            return ResponsiveCenter(
+              maxWidth: 640,
+              padding: const EdgeInsets.all(16),
+              child: Column(
                 children: [
-                  Text(
-                    'Lv ${player.currentLevel}',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                      color: AppColors.primary,
-                    ),
-                  ),
-                  Text(
-                    'Merges: ${player.totalMerges}',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    'Coins: ${player.coins} 💰',
-                    style: GoogleFonts.poppins(
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
+                  _StatusPanel(controller: controller, compact: compact),
+                  const SizedBox(height: 12),
+                  Expanded(child: board),
+                  const SizedBox(height: 12),
+                  _SpawnPanel(showHint: !compact),
                 ],
               ),
-              const SizedBox(height: 12),
-              Expanded(
-                child: Center(
-                  child: BoardWidget(
-                    board: player.board,
-                    selectedRow: player.selectedRow,
-                    selectedCol: player.selectedCol,
-                    onTileTap: _onTileTap,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Tap an item, then tap an adjacent matching item to merge',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 13,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _spawnItem,
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: Text(
-                    'Spawn Item  (-1 Energy)',
-                    style: GoogleFonts.poppins(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.secondary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
+}
+
+// ------------------------------------------------------------------ Panels
+
+class _StatusPanel extends StatelessWidget {
+  const _StatusPanel({required this.controller, required this.compact});
+
+  final GameController controller;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final player = controller.player;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        EnergyBar(
+          energy: player.energy,
+          maxEnergy: player.maxEnergy,
+          nextEnergyIn: controller.nextEnergyIn,
+          onAddEnergy: () => _showEnergyDialog(context),
+        ),
+        const SizedBox(height: 12),
+        AppCard(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: StatChip(
+                      icon: Icons.trending_up,
+                      value: 'Lv ${player.currentLevel}',
+                      label: 'Level',
+                    ),
+                  ),
+                  Expanded(
+                    child: StatChip(
+                      icon: Icons.merge,
+                      value: '${player.totalMerges}',
+                      label: 'Merges',
+                    ),
+                  ),
+                  Expanded(
+                    child: StatChip(
+                      icon: Icons.monetization_on_outlined,
+                      value: '${player.coins}',
+                      label: 'Coins',
+                    ),
+                  ),
+                ],
+              ),
+              if (!compact) ...[
+                const SizedBox(height: 12),
+                LevelProgressBar(
+                  level: player.currentLevel,
+                  progress: player.levelProgress,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpawnPanel extends StatelessWidget {
+  const _SpawnPanel({required this.showHint});
+
+  final bool showHint;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showHint) ...[
+          Text(
+            'Tap an item, then tap an adjacent match to merge — an empty tile to move it, or a different neighbour to swap.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey.shade700),
+          ),
+          const SizedBox(height: 12),
+        ],
+        ElevatedButton.icon(
+          onPressed: () => _onSpawn(context),
+          icon: const Icon(Icons.add_circle_outline),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.secondary,
+          ),
+          label: Text('Spawn Item  (-${GameConstants.energyCostSpawn} ⚡)'),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------- Handlers
+
+void _onTileTap(BuildContext context, int row, int col) {
+  final controller = context.read<GameController>();
+  final result = controller.onTileTap(row, col);
+
+  if (result.newChapters.isNotEmpty) {
+    _showChapterUnlocked(context, result.newChapters.first);
+    return;
+  }
+
+  switch (result.outcome) {
+    case TapOutcome.merged:
+      showAppToast(
+        context,
+        'Merged into ${result.item!.displayName}! +${result.coinsEarned} 💰',
+        color: AppColors.success,
+      );
+    case TapOutcome.masterpiece:
+      showAppToast(
+        context,
+        'Garden masterpiece complete! +${result.coinsEarned} 💰',
+        color: AppColors.success,
+      );
+    case TapOutcome.ignored:
+    case TapOutcome.selected:
+    case TapOutcome.deselected:
+    case TapOutcome.moved:
+    case TapOutcome.swapped:
+      break;
+  }
+}
+
+void _onSpawn(BuildContext context) {
+  final controller = context.read<GameController>();
+  switch (controller.spawn()) {
+    case SpawnOutcome.spawned:
+      break;
+    case SpawnOutcome.noEnergy:
+      showAppToast(
+        context,
+        'Not enough energy! Wait for it to recharge or refill.',
+        color: AppColors.danger,
+        action: SnackBarAction(
+          label: 'Refill',
+          textColor: Colors.white,
+          onPressed: () => _showEnergyDialog(context),
+        ),
+      );
+    case SpawnOutcome.boardFull:
+      showAppToast(context, 'Board is full! Merge or move items first.');
+  }
+}
+
+void _showEnergyDialog(BuildContext context) {
+  final controller = context.read<GameController>();
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Refill Energy'),
+      content: const Text(
+        'In the full release this opens a rewarded ad or an energy pack.\n\n'
+        'For this build you can claim +${GameConstants.freeEnergyAmount} energy for free.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Close'),
+        ),
+        FilledButton(
+          onPressed: () {
+            controller.claimFreeEnergy();
+            Navigator.pop(ctx);
+            showAppToast(
+              context,
+              '+${GameConstants.freeEnergyAmount} Energy!',
+              color: AppColors.energy,
+            );
+          },
+          child: const Text('Claim free energy'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showChapterUnlocked(BuildContext context, StoryChapter chapter) {
+  final navigator = Navigator.of(context);
+  final controller = context.read<GameController>();
+  final number =
+      controller.player.chapters.indexWhere((c) => c.id == chapter.id) + 1;
+
+  showModalBottomSheet<void>(
+    context: context,
+    constraints: const BoxConstraints(maxWidth: 520),
+    builder: (sheetCtx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(chapter.characterEmoji, style: const TextStyle(fontSize: 56)),
+            const SizedBox(height: 8),
+            Text(
+              'New chapter unlocked! 📖',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Chapter $number · ${chapter.title}',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                fontSize: 15,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(sheetCtx),
+                    child: const Text('Later'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(sheetCtx);
+                      navigator.push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => ChapterReader(
+                            chapter: chapter,
+                            number: number,
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('Read now'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

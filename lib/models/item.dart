@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 enum ItemType {
@@ -11,105 +13,75 @@ enum ItemType {
   statue,
 }
 
-class MergeItem {
-  final ItemType type;
-  final int level; // 1-based within type progression
-  final String id;
+extension ItemTypeInfo on ItemType {
+  String get displayName => switch (this) {
+        ItemType.seed => 'Seed',
+        ItemType.sprout => 'Sprout',
+        ItemType.flower => 'Flower',
+        ItemType.bouquet => 'Bouquet',
+        ItemType.bench => 'Garden Bench',
+        ItemType.fountain => 'Fountain',
+        ItemType.greenhouse => 'Greenhouse',
+        ItemType.statue => 'Statue',
+      };
 
+  String get emoji => switch (this) {
+        ItemType.seed => '🌱',
+        ItemType.sprout => '🌿',
+        ItemType.flower => '🌸',
+        ItemType.bouquet => '💐',
+        ItemType.bench => '🪑',
+        ItemType.fountain => '⛲',
+        ItemType.greenhouse => '🏡',
+        ItemType.statue => '🗿',
+      };
+
+  Color get color => switch (this) {
+        ItemType.seed => const Color(0xFFA5D6A7),
+        ItemType.sprout => const Color(0xFF81C784),
+        ItemType.flower => const Color(0xFFF8BBD9),
+        ItemType.bouquet => const Color(0xFFF48FB1),
+        ItemType.bench => const Color(0xFFBCAAA4),
+        ItemType.fountain => const Color(0xFF80DEEA),
+        ItemType.greenhouse => const Color(0xFF80CBC4),
+        ItemType.statue => const Color(0xFFB0BEC5),
+      };
+
+  /// The tier this type merges into, or null at the top tier.
+  ItemType? get next =>
+      index + 1 < ItemType.values.length ? ItemType.values[index + 1] : null;
+}
+
+class MergeItem {
   MergeItem({
     required this.type,
-    required this.level,
+    this.level = 1,
     String? id,
-  }) : id = id ?? UniqueKey().toString();
+  }) : id = id ?? _generateId();
 
-  String get displayName {
-    switch (type) {
-      case ItemType.seed:
-        return 'Seed';
-      case ItemType.sprout:
-        return 'Sprout';
-      case ItemType.flower:
-        return 'Flower';
-      case ItemType.bouquet:
-        return 'Bouquet';
-      case ItemType.bench:
-        return 'Garden Bench';
-      case ItemType.fountain:
-        return 'Fountain';
-      case ItemType.greenhouse:
-        return 'Greenhouse';
-      case ItemType.statue:
-        return 'Statue';
-    }
-  }
+  final ItemType type;
+  final int level; // reserved for future per-type progression
+  final String id;
 
-  String get emoji {
-    switch (type) {
-      case ItemType.seed:
-        return '🌱';
-      case ItemType.sprout:
-        return '🌿';
-      case ItemType.flower:
-        return '🌸';
-      case ItemType.bouquet:
-        return '💐';
-      case ItemType.bench:
-        return '🪑';
-      case ItemType.fountain:
-        return '⛲';
-      case ItemType.greenhouse:
-        return '🏡';
-      case ItemType.statue:
-        return '🗿';
-    }
-  }
+  static final Random _idRandom = Random();
+  static int _counter = 0;
 
-  Color get color {
-    switch (type) {
-      case ItemType.seed:
-        return const Color(0xFFA5D6A7);
-      case ItemType.sprout:
-        return const Color(0xFF81C784);
-      case ItemType.flower:
-        return const Color(0xFFF8BBD9);
-      case ItemType.bouquet:
-        return const Color(0xFFF48FB1);
-      case ItemType.bench:
-        return const Color(0xFFBCAAA4);
-      case ItemType.fountain:
-        return const Color(0xFF80DEEA);
-      case ItemType.greenhouse:
-        return const Color(0xFF80CBC4);
-      case ItemType.statue:
-        return const Color(0xFFB0BEC5);
-    }
-  }
+  static String _generateId() =>
+      '${DateTime.now().microsecondsSinceEpoch}-${_counter++}-${_idRandom.nextInt(1 << 20)}';
+
+  String get displayName => type.displayName;
+  String get emoji => type.emoji;
+  Color get color => type.color;
+  bool get isMaxTier => type.next == null;
 
   /// Returns the next tier item if this can be merged further.
   MergeItem? get nextTier {
-    switch (type) {
-      case ItemType.seed:
-        return MergeItem(type: ItemType.sprout, level: 1);
-      case ItemType.sprout:
-        return MergeItem(type: ItemType.flower, level: 1);
-      case ItemType.flower:
-        return MergeItem(type: ItemType.bouquet, level: 1);
-      case ItemType.bouquet:
-        return MergeItem(type: ItemType.bench, level: 1);
-      case ItemType.bench:
-        return MergeItem(type: ItemType.fountain, level: 1);
-      case ItemType.fountain:
-        return MergeItem(type: ItemType.greenhouse, level: 1);
-      case ItemType.greenhouse:
-        return MergeItem(type: ItemType.statue, level: 1);
-      case ItemType.statue:
-        return null; // Max tier
-    }
+    final nextType = type.next;
+    return nextType == null ? null : MergeItem(type: nextType);
   }
 
-  bool canMergeWith(MergeItem other) {
-    return type == other.type && level == other.level;
-  }
+  bool canMergeWith(MergeItem other) =>
+      type == other.type && level == other.level;
 
   Map<String, dynamic> toJson() => {
         'type': type.index,
@@ -118,9 +90,13 @@ class MergeItem {
       };
 
   factory MergeItem.fromJson(Map<String, dynamic> json) {
+    final typeIndex = json['type'] as int;
+    if (typeIndex < 0 || typeIndex >= ItemType.values.length) {
+      throw FormatException('Unknown item type index: $typeIndex');
+    }
     return MergeItem(
-      type: ItemType.values[json['type'] as int],
-      level: json['level'] as int,
+      type: ItemType.values[typeIndex],
+      level: json['level'] as int? ?? 1,
       id: json['id'] as String?,
     );
   }

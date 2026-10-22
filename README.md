@@ -1,81 +1,82 @@
 # Bloom & Bonds – Merge + Story Puzzle
 
-A charming, fully responsive Flutter mobile game that combines classic **merge mechanics** with an ongoing **emotional story**.
+A responsive Flutter game that combines **merge mechanics** with an emotional **story**.
+Merge garden items to restore the abandoned Whispering Gardens and unlock 30 story chapters.
 
-Merge garden items on the board to restore the abandoned Whispering Gardens and unlock chapters of a light romance / mystery story.
+## Quick start
 
-## What’s New in this Version
-
-- **First-time Tutorial / Guided Onboarding**  
-  When the app is opened for the first time, a beautiful step-by-step tutorial teaches the player how to play (including an interactive live demo of merging).  
-  At the end it clearly says “Dummy mode has ended – Now play for real!”
-
-- **No Authentication** (as requested) – pure offline experience for v1. Auth can be added later.
-
-- **30 Story Chapters** with rich narrative (players easily reach 100+ merges / high levels through normal play).
-
-- **Level system** shown on home & game screen.
-
-- **Fully Responsive** – looks good on small phones, large phones, and tablets.
-
-## Features
-
-- 5×5 merge board (tap → tap adjacent matching item)
-- Item progression: Seed → Sprout → Flower → Bouquet → Bench → Fountain → Greenhouse → Statue
-- Energy system (regenerates over time)
-- 30 emotional story chapters
-- Local save (SharedPreferences)
-- Clean pastel UI + Google Fonts
-- Tutorial with interactive practice merge
-
-## How to Run
+This archive contains the Dart source, tests and config. Generate the platform folders once, then run:
 
 ```bash
+cd bloom_and_bonds
+flutter create . --project-name bloom_and_bonds --platforms=android,ios,web
 flutter pub get
+flutter test
 flutter run
 ```
 
-Works great on Android, iOS and Web.
+Requires Flutter 3.27+ (Dart 3.6+).
 
-## First Launch Flow
+> **Android release builds:** `google_fonts` downloads fonts at runtime, so add
+> `<uses-permission android:name="android.permission.INTERNET"/>` to
+> `android/app/src/main/AndroidManifest.xml`. To work fully offline, bundle the
+> Poppins / Playfair Display / Lora fonts as assets instead.
 
-1. App opens → automatically shows Tutorial
-2. Player learns the concept
-3. Interactive step: actually merge two Seeds into a Sprout
-4. Explains Energy + Story
-5. “Dummy mode ended – Start Playing for Real!”
-6. Goes to Home screen → player can now play freely
+## Gameplay
 
-## Project Structure
+- 5×5 board. Tap an item, then tap an **adjacent matching item** to merge, an **empty tile** to move it, or a different **adjacent item** to swap places (so a full board is never a dead end).
+- Tiers: Seed → Sprout → Flower → Bouquet → Bench → Fountain → Greenhouse → Statue.
+- Two Statues combine into a **Garden Masterpiece** (+100 coins) and leave the board, so it never clogs.
+- Spawning costs 1 energy; energy regenerates 1 per 2 minutes (with a live countdown).
+- 30 story chapters unlock by total merges. Progress is saved locally (SharedPreferences).
+
+## What changed in this version
+
+**Responsive**
+- Board, tiles and fonts size from available space (`LayoutBuilder`), not fixed pixels.
+- Phone portrait, phone landscape, tablet and desktop/web layouts (board + side panel on wide screens).
+- Content width capped on large screens; scrollable layouts so nothing overflows on short screens.
+- System font scaling clamped (0.85–1.3×); all orientations allowed.
+
+**Architecture**
+- One `GameController` (Provider) shared by all screens – the old code created separate controllers per screen.
+- Selection state moved out of the save model; startup routing via `AppGate` (splash → tutorial → home) instead of navigation hacks in `initState`.
+- Central `AppTheme`, `Responsive` helpers and reusable widgets (`AppCard`, `StatChip`, `LevelProgressBar`, `SettingsSheet`).
+
+**Bug fixes**
+- Energy regeneration no longer discards partial minutes; countdown to next energy added.
+- Chapter-unlock detection compares before/after instead of matching an exact merge count.
+- Chapters are sorted by unlock order (chapters 21–30 were interleaved by id).
+- The 30-second `Future.delayed` loop is replaced by a cancellable timer; saves are debounced and flushed when the app is backgrounded.
+- Spawning on a full board no longer charges and refunds energy.
+- Max-tier items could permanently fill the board; they now combine into a masterpiece.
+- Corrupt or malformed saves fall back safely; save/load errors are caught.
+- Deprecated APIs replaced (`withOpacity` → `withValues`, `ColorScheme.background`).
+- Removed the duplicate `constants_1.dart`.
+
+**Polish**
+- Tile pop animations, animated progress bars, haptics (toggle in Settings), chapter-unlocked bottom sheet.
+- Story screen shows chapter numbers and progress toward locked chapters.
+- Accessibility labels on board tiles and stats.
+- Unit tests for item progression, energy, levels, chapters, save round-trip and merge logic.
+
+## Project structure
 
 ```
 lib/
 ├── main.dart
-├── models/
-│   ├── item.dart
-│   ├── player_data.dart
-│   └── story_chapter.dart
-├── screens/
-│   ├── home_screen.dart
-│   ├── game_screen.dart
-│   ├── story_screen.dart
-│   └── tutorial_screen.dart   ← NEW guided experience
-├── widgets/
-│   ├── board_widget.dart
-│   ├── item_tile.dart
-│   └── energy_bar.dart
-├── services/
-│   └── save_service.dart
-└── utils/
-    └── constants.dart
+├── app.dart                     # MaterialApp + AppGate
+├── controllers/game_controller.dart
+├── models/ (cell, item, player_data, story_chapter)
+├── screens/ (splash, home, game, story, tutorial)
+├── widgets/ (board, item_tile, energy_bar, app_card, stat_chip,
+│             level_progress_bar, settings_sheet)
+├── services/save_service.dart
+├── theme/app_theme.dart
+└── utils/ (constants, responsive, ui_helpers)
+test/ (models_test, game_controller_test)
 ```
 
-## Next Version Ideas
+## Ideas for next versions
 
-- Authentication (Google / Apple / Guest)
-- Cloud save
-- More item tiers & special events
-- Drag & drop merging
-- Season pass / daily rewards
-
-Enjoy restoring the gardens!
+Authentication, cloud save, drag-and-drop merging, daily rewards, sound effects, more tiers and events.

@@ -37,9 +37,9 @@ class StoryChapter {
         'isUnlocked': isUnlocked,
       };
 
-  /// 30 rich story chapters. Players easily reach 100+ merges / levels through normal play.
+  /// 30 story chapters, returned sorted by [requiredMerges].
   static List<StoryChapter> getInitialChapters() {
-    return [
+    final chapters = <StoryChapter>[
       // ===== PROLOGUE =====
       const StoryChapter(
         id: 1,
@@ -351,5 +351,9 @@ class StoryChapter {
         requiredMerges: 500,
       ),
     ];
+
+    // Chapters are listed by story arc; always present them in unlock order.
+    chapters.sort((a, b) => a.requiredMerges.compareTo(b.requiredMerges));
+    return chapters;
   }
 }

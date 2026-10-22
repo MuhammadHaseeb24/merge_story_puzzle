@@ -1,22 +1,9 @@
-# Flutter/Dart
 .dart_tool/
 .packages
-.pub-cache/
-.pub/
 build/
-flutter_*.png
-**/doc/api/
 .flutter-plugins
 .flutter-plugins-dependencies
-
-# IDE
+pubspec.lock
 .idea/
-.vscode/
 *.iml
-*.ipr
-*.iws
-
-# Misc
-*.log
-*.swp
 .DS_Store
