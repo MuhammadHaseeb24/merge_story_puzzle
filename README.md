@@ -26,9 +26,16 @@ Requires Flutter 3.27+ (Dart 3.6+).
 
 - 5×5 board. Tap an item, then tap an **adjacent matching item** to merge, an **empty tile** to move it, or a different **adjacent item** to swap places (so a full board is never a dead end).
 - Tiers: Seed → Sprout → Flower → Bouquet → Bench → Fountain → Greenhouse → Statue.
-- Two Statues combine into a **Garden Masterpiece** (+100 coins) and leave the board, so it never clogs.
-- Spawning costs 1 energy; energy regenerates 1 per 2 minutes (with a live countdown).
+- **Endless tiers:** after the Statue, matching items keep evolving (Golden Crown → Crystal → Starlight → Rainbow → …) forever.
+- Merging is always free. Spawning costs 1 energy; energy regenerates over time, can be **claimed free without limit**, or bought with coins you win.
+- **Endless levels:** +1 level every 20 merges after level 60.
 - 30 story chapters unlock by total merges. Progress is saved locally (SharedPreferences).
+
+## 3D look (v1.2)
+
+- Tilted perspective board slab with sunken sockets and raised, extruded tiles that press down.
+- Chunky `Button3D` buttons, extruded cards, floating/rotating 3D emoji and an animated glow background.
+- Built with plain Flutter transforms (no extra packages), so it stays light and works on every platform.
 
 ## What changed in this version
 
@@ -49,7 +56,7 @@ Requires Flutter 3.27+ (Dart 3.6+).
 - Chapters are sorted by unlock order (chapters 21–30 were interleaved by id).
 - The 30-second `Future.delayed` loop is replaced by a cancellable timer; saves are debounced and flushed when the app is backgrounded.
 - Spawning on a full board no longer charges and refunds energy.
-- Max-tier items could permanently fill the board; they now combine into a masterpiece.
+- Max-tier items could permanently fill the board; tiers are now endless and items can be swapped.
 - Corrupt or malformed saves fall back safely; save/load errors are caught.
 - Deprecated APIs replaced (`withOpacity` → `withValues`, `ColorScheme.background`).
 - Removed the duplicate `constants_1.dart`.

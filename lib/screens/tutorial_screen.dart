@@ -7,6 +7,9 @@ import '../models/cell.dart';
 import '../models/item.dart';
 import '../models/player_data.dart';
 import '../utils/constants.dart';
+import '../widgets/button_3d.dart';
+import '../widgets/floating_3d.dart';
+import '../widgets/garden_background.dart';
 import '../utils/responsive.dart';
 import '../utils/ui_helpers.dart';
 import '../widgets/board_widget.dart';
@@ -167,8 +170,7 @@ class _TutorialScreenState extends State<TutorialScreen>
     final isLast = _step == _steps.length - 1;
 
     return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      body: GardenBackground(
         child: SafeArea(
           child: ResponsiveCenter(
             maxWidth: 560,
@@ -206,9 +208,11 @@ class _TutorialScreenState extends State<TutorialScreen>
                             children: [
                               ScaleTransition(
                                 scale: _pulseAnimation,
-                                child: Text(
-                                  current.emoji,
-                                  style: TextStyle(fontSize: small ? 56 : 80),
+                                child: Floating3D(
+                                  child: Text(
+                                    current.emoji,
+                                    style: TextStyle(fontSize: small ? 56 : 80),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 16),
@@ -265,13 +269,14 @@ class _TutorialScreenState extends State<TutorialScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _next,
-                    child: Text(isLast ? 'Start Playing!' : 'Next'),
-                  ),
+                Button3D(
+                  label: isLast ? 'Start Playing!' : 'Next',
+                  icon: isLast
+                      ? Icons.celebration_rounded
+                      : Icons.arrow_forward_rounded,
+                  onPressed: _next,
                 ),
+                const SizedBox(height: 4),
                 SizedBox(
                   height: 44,
                   child: Row(

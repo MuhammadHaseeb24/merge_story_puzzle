@@ -19,7 +19,6 @@ enum TapOutcome {
   moved,
   swapped,
   merged,
-  masterpiece,
 }
 
 enum SpawnOutcome { spawned, noEnergy, boardFull }
@@ -217,22 +216,10 @@ class GameController extends ChangeNotifier with WidgetsBindingObserver {
     _selected = null;
     player.totalMerges++;
 
-    final int coins;
-    final TapOutcome outcome;
-    if (next == null) {
-      // Two top-tier items combine into a "masterpiece": both leave the board
-      // so it never fills up permanently.
-      board[from.row][from.col] = null;
-      board[to.row][to.col] = null;
-      coins = GameConstants.masterpieceBonus;
-      outcome = TapOutcome.masterpiece;
-    } else {
-      board[to.row][to.col] = next;
-      board[from.row][from.col] = null;
-      coins = GameConstants.mergeCoinBase +
-          next.type.index * GameConstants.mergeCoinPerTier;
-      outcome = TapOutcome.merged;
-    }
+    board[to.row][to.col] = next;
+    board[from.row][from.col] = null;
+    final coins = GameConstants.mergeCoinBase +
+        next.tierNumber * GameConstants.mergeCoinPerTier;
     player.coins += coins;
 
     final newChapters = player.unlockChapters();
@@ -243,8 +230,8 @@ class GameController extends ChangeNotifier with WidgetsBindingObserver {
     _scheduleSave();
 
     return TapResult(
-      outcome,
-      item: next ?? source,
+      TapOutcome.merged,
+      item: next,
       coinsEarned: coins,
       newChapters: newChapters,
     );
@@ -288,6 +275,17 @@ class GameController extends ChangeNotifier with WidgetsBindingObserver {
     nextEnergyIn.value = player.timeToNextEnergy;
     notifyListeners();
     _scheduleSave();
+  }
+
+  /// Spends coins won in-game for an energy pack. Returns false if too poor.
+  bool buyEnergyWithCoins() {
+    if (player.coins < GameConstants.energyPackCost) return false;
+    player.coins -= GameConstants.energyPackCost;
+    player.addEnergy(GameConstants.energyPackAmount);
+    nextEnergyIn.value = player.timeToNextEnergy;
+    notifyListeners();
+    _scheduleSave();
+    return true;
   }
 
   void setHaptics(bool enabled) {

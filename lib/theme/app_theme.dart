@@ -28,8 +28,9 @@ class AppTheme {
       textTheme: GoogleFonts.poppinsTextTheme(base.textTheme),
       appBarTheme: AppBarTheme(
         centerTitle: true,
-        elevation: 0,
-        scrolledUnderElevation: 0,
+        elevation: 8,
+        scrolledUnderElevation: 8,
+        shadowColor: AppColors.primary.withValues(alpha: 0.5),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         systemOverlayStyle: SystemUiOverlayStyle.light,

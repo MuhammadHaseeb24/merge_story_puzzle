@@ -66,7 +66,7 @@ void main() {
     expect(c.player.board[0][1]?.type, ItemType.seed);
   });
 
-  test('two statues merge into a masterpiece and clear the board', () {
+  test('statues keep merging into higher levels (no top tier)', () {
     final c = _controller();
     c.player.board[1][1] = MergeItem(type: ItemType.statue);
     c.player.board[1][2] = MergeItem(type: ItemType.statue);
@@ -74,9 +74,28 @@ void main() {
     c.onTileTap(1, 1);
     final result = c.onTileTap(1, 2);
 
-    expect(result.outcome, TapOutcome.masterpiece);
+    expect(result.outcome, TapOutcome.merged);
     expect(c.player.board[1][1], isNull);
-    expect(c.player.board[1][2], isNull);
+    expect(c.player.board[1][2]?.type, ItemType.statue);
+    expect(c.player.board[1][2]?.level, 2);
+  });
+
+  test('free energy can be claimed repeatedly', () {
+    final c = _controller(energy: 0);
+    c.claimFreeEnergy();
+    c.claimFreeEnergy();
+    expect(c.player.energy, 30);
+  });
+
+  test('energy can be bought with coins', () {
+    final c = _controller(energy: 0);
+    expect(c.buyEnergyWithCoins(), isTrue);
+    expect(c.player.energy, 20);
+    expect(c.player.coins, 60);
+
+    c.player.coins = 5;
+    expect(c.buyEnergyWithCoins(), isFalse);
+    expect(c.player.energy, 20);
   });
 
   test('spawn costs energy and places an item', () {

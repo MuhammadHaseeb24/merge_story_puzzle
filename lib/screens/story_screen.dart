@@ -9,6 +9,9 @@ import '../models/story_chapter.dart';
 import '../utils/constants.dart';
 import '../utils/responsive.dart';
 import '../widgets/app_card.dart';
+import '../widgets/button_3d.dart';
+import '../widgets/floating_3d.dart';
+import '../widgets/garden_background.dart';
 
 class StoryScreen extends StatelessWidget {
   const StoryScreen({super.key});
@@ -22,7 +25,8 @@ class StoryScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Story Chapters')),
-      body: SafeArea(
+      body: GardenBackground(
+        child: SafeArea(
         child: ResponsiveCenter(
           maxWidth: 720,
           child: ListView.builder(
@@ -68,6 +72,7 @@ class StoryScreen extends StatelessWidget {
               );
             },
           ),
+        ),
         ),
       ),
     );
@@ -193,9 +198,11 @@ class ChapterReader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
-                  child: Text(
-                    chapter.characterEmoji,
-                    style: const TextStyle(fontSize: 64),
+                  child: Floating3D(
+                    child: Text(
+                      chapter.characterEmoji,
+                      style: const TextStyle(fontSize: 64),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -222,9 +229,13 @@ class ChapterReader extends StatelessWidget {
                 ),
                 const SizedBox(height: 40),
                 Center(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Continue'),
+                  child: SizedBox(
+                    width: 240,
+                    child: Button3D(
+                      label: 'Continue',
+                      icon: Icons.arrow_forward_rounded,
+                      onPressed: () => Navigator.pop(context),
+                    ),
                   ),
                 ),
               ],

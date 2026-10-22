@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../utils/constants.dart';
+import '../widgets/floating_3d.dart';
+import '../widgets/garden_background.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -9,13 +11,12 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      body: GardenBackground(
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('🌸', style: TextStyle(fontSize: 72)),
+              const Floating3D(child: Text('🌸', style: TextStyle(fontSize: 84))),
               const SizedBox(height: 12),
               Text(
                 'Bloom & Bonds',

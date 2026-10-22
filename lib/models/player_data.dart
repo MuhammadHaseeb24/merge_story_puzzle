@@ -132,10 +132,10 @@ class PlayerData {
     [450, 60],
   ];
 
-  /// Player level derived from total merges (reaches 100+ over time).
+  /// Player level derived from total merges. Endless: +1 per 20 merges after 500.
   int get currentLevel {
     if (totalMerges >= 500) {
-      return 60 + ((totalMerges - 500) ~/ 20).clamp(0, 40);
+      return 60 + (totalMerges - 500) ~/ 20;
     }
     var level = 1;
     for (final row in _levelTable) {
@@ -147,7 +147,6 @@ class PlayerData {
   /// 0..1 progress towards the next level.
   double get levelProgress {
     final t = totalMerges;
-    if (t >= 1300) return 1.0;
     if (t >= 500) return ((t - 500) % 20) / 20;
     var start = 0;
     var end = 500;

@@ -30,14 +30,15 @@ class GameConstants {
 
   static const int energyCostSpawn = 1;
   static const int maxEnergy = 30;
-  static const int energyOvercap = 50; // bonus energy allowed above max
+  static const int energyOvercap = 970; // claimed energy can stack up to 1000
   static const int energyRegenMinutes = 2; // 1 energy per 2 min
-  static const int freeEnergyAmount = 15;
+  static const int freeEnergyAmount = 15; // free claim, unlimited uses
+  static const int energyPackAmount = 20;
+  static const int energyPackCost = 40; // paid with coins won in-game
 
   static const int startingCoins = 100;
   static const int mergeCoinBase = 5;
   static const int mergeCoinPerTier = 2;
-  static const int masterpieceBonus = 100;
 
   // Spawn weights (cumulative): seed 55%, sprout 30%, flower 15%.
   static const double seedChance = 0.55;

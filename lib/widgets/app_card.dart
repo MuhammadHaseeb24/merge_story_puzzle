@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../utils/constants.dart';
+import 'raised_surface.dart';
 
+/// White card with a 3D extruded edge.
 class AppCard extends StatelessWidget {
   const AppCard({
     super.key,
@@ -14,19 +15,11 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return RaisedSurface(
+      color: Colors.white,
+      radius: 22,
+      depth: 5,
       padding: padding,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
       child: child,
     );
   }

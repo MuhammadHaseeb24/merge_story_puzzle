@@ -9,6 +9,9 @@ import '../utils/responsive.dart';
 import '../utils/ui_helpers.dart';
 import '../widgets/app_card.dart';
 import '../widgets/board_widget.dart';
+import '../widgets/button_3d.dart';
+import '../widgets/floating_3d.dart';
+import '../widgets/garden_background.dart';
 import '../widgets/energy_bar.dart';
 import '../widgets/level_progress_bar.dart';
 import '../widgets/stat_chip.dart';
@@ -46,7 +49,8 @@ class GameScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(
+      body: GardenBackground(
+        child: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final wide = constraints.maxWidth >= 720 &&
@@ -94,6 +98,7 @@ class GameScreen extends StatelessWidget {
               ),
             );
           },
+        ),
         ),
       ),
     );
@@ -186,13 +191,11 @@ class _SpawnPanel extends StatelessWidget {
           ),
           const SizedBox(height: 12),
         ],
-        ElevatedButton.icon(
+        Button3D(
+          label: 'Spawn Item  (-${GameConstants.energyCostSpawn} ⚡)',
+          icon: Icons.auto_awesome_rounded,
+          color: AppColors.secondary,
           onPressed: () => _onSpawn(context),
-          icon: const Icon(Icons.add_circle_outline),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.secondary,
-          ),
-          label: Text('Spawn Item  (-${GameConstants.energyCostSpawn} ⚡)'),
         ),
       ],
     );
@@ -215,12 +218,6 @@ void _onTileTap(BuildContext context, int row, int col) {
       showAppToast(
         context,
         'Merged into ${result.item!.displayName}! +${result.coinsEarned} 💰',
-        color: AppColors.success,
-      );
-    case TapOutcome.masterpiece:
-      showAppToast(
-        context,
-        'Garden masterpiece complete! +${result.coinsEarned} 💰',
         color: AppColors.success,
       );
     case TapOutcome.ignored:
@@ -255,32 +252,71 @@ void _onSpawn(BuildContext context) {
 
 void _showEnergyDialog(BuildContext context) {
   final controller = context.read<GameController>();
-  showDialog<void>(
+  showModalBottomSheet<void>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Refill Energy'),
-      content: const Text(
-        'In the full release this opens a rewarded ad or an energy pack.\n\n'
-        'For this build you can claim +${GameConstants.freeEnergyAmount} energy for free.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('Close'),
-        ),
-        FilledButton(
-          onPressed: () {
-            controller.claimFreeEnergy();
-            Navigator.pop(ctx);
-            showAppToast(
-              context,
-              '+${GameConstants.freeEnergyAmount} Energy!',
+    constraints: const BoxConstraints(maxWidth: 520),
+    builder: (sheetCtx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Energy Station ⚡',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Free energy is always available — claim as often as you like.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(fontSize: 13, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 18),
+            Button3D(
+              label: 'Claim free +${GameConstants.freeEnergyAmount} ⚡',
+              icon: Icons.card_giftcard_rounded,
               color: AppColors.energy,
-            );
-          },
-          child: const Text('Claim free energy'),
+              onPressed: () {
+                controller.claimFreeEnergy();
+                showAppToast(
+                  context,
+                  '+${GameConstants.freeEnergyAmount} Energy!',
+                  color: AppColors.energy,
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+            Button3D(
+              label:
+                  'Buy +${GameConstants.energyPackAmount} ⚡ for ${GameConstants.energyPackCost} 💰',
+              icon: Icons.shopping_bag_rounded,
+              color: Colors.white,
+              textColor: AppColors.primary,
+              onPressed: () {
+                final ok = controller.buyEnergyWithCoins();
+                showAppToast(
+                  context,
+                  ok
+                      ? '+${GameConstants.energyPackAmount} Energy!'
+                      : 'Not enough coins — keep merging to win more!',
+                  color: ok ? AppColors.energy : AppColors.danger,
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: () => Navigator.pop(sheetCtx),
+              child: const Text('Close'),
+            ),
+          ],
         ),
-      ],
+      ),
     ),
   );
 }
@@ -300,7 +336,7 @@ void _showChapterUnlocked(BuildContext context, StoryChapter chapter) {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(chapter.characterEmoji, style: const TextStyle(fontSize: 56)),
+            Floating3D(child: Text(chapter.characterEmoji, style: const TextStyle(fontSize: 56))),
             const SizedBox(height: 8),
             Text(
               'New chapter unlocked! 📖',
@@ -324,14 +360,18 @@ void _showChapterUnlocked(BuildContext context, StoryChapter chapter) {
             Row(
               children: [
                 Expanded(
-                  child: OutlinedButton(
+                  child: Button3D(
+                    label: 'Later',
+                    color: Colors.white,
+                    textColor: AppColors.primary,
                     onPressed: () => Navigator.pop(sheetCtx),
-                    child: const Text('Later'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: ElevatedButton(
+                  child: Button3D(
+                    label: 'Read now',
+                    icon: Icons.auto_stories_rounded,
                     onPressed: () {
                       Navigator.pop(sheetCtx);
                       navigator.push(
@@ -343,7 +383,6 @@ void _showChapterUnlocked(BuildContext context, StoryChapter chapter) {
                         ),
                       );
                     },
-                    child: const Text('Read now'),
                   ),
                 ),
               ],

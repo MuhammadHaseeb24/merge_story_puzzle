@@ -7,6 +7,9 @@ import 'package:provider/provider.dart';
 import '../controllers/game_controller.dart';
 import '../models/player_data.dart';
 import '../utils/constants.dart';
+import '../widgets/button_3d.dart';
+import '../widgets/floating_3d.dart';
+import '../widgets/garden_background.dart';
 import '../utils/responsive.dart';
 import '../widgets/app_card.dart';
 import '../widgets/level_progress_bar.dart';
@@ -32,8 +35,7 @@ class HomeScreen extends StatelessWidget {
     final player = controller.player;
 
     return Scaffold(
-      body: DecoratedBox(
-        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+      body: GardenBackground(
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -107,6 +109,8 @@ class _Hero extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        const Floating3D(child: Text('🌸', style: TextStyle(fontSize: 84))),
+        const SizedBox(height: 8),
         Text(
           'Bloom & Bonds',
           textAlign: TextAlign.center,
@@ -218,25 +222,25 @@ class _Actions extends StatelessWidget {
               color: AppColors.textSecondary,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
         ],
-        ElevatedButton(
+        Button3D(
+          label: player.totalMerges == 0 ? 'Start Restoring' : 'Continue Restoring',
+          icon: Icons.play_arrow_rounded,
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute<void>(builder: (_) => const GameScreen()),
           ),
-          child: Text(
-            player.totalMerges == 0 ? 'Start Restoring' : 'Continue Restoring',
-          ),
         ),
-        const SizedBox(height: 12),
-        OutlinedButton(
+        const SizedBox(height: 14),
+        Button3D(
+          label: 'Story Chapters (${player.unlockedChapterCount}/${player.chapters.length})',
+          icon: Icons.menu_book_rounded,
+          color: Colors.white,
+          textColor: AppColors.primary,
           onPressed: () => Navigator.push(
             context,
             MaterialPageRoute<void>(builder: (_) => const StoryScreen()),
-          ),
-          child: Text(
-            'Read Story Chapters (${player.unlockedChapterCount}/${player.chapters.length})',
           ),
         ),
       ],

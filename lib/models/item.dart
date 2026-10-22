@@ -60,7 +60,10 @@ class MergeItem {
   }) : id = id ?? _generateId();
 
   final ItemType type;
-  final int level; // reserved for future per-type progression
+
+  /// Always 1 for the first seven types. For [ItemType.statue] it counts up
+  /// forever: two statues of the same level merge into level + 1.
+  final int level;
   final String id;
 
   static final Random _idRandom = Random();
@@ -69,15 +72,42 @@ class MergeItem {
   static String _generateId() =>
       '${DateTime.now().microsecondsSinceEpoch}-${_counter++}-${_idRandom.nextInt(1 << 20)}';
 
-  String get displayName => type.displayName;
-  String get emoji => type.emoji;
-  Color get color => type.color;
-  bool get isMaxTier => type.next == null;
+  static const List<({String name, String emoji, Color color})> _legend = [
+    (name: 'Statue', emoji: '🗿', color: Color(0xFFB0BEC5)),
+    (name: 'Golden Crown', emoji: '👑', color: Color(0xFFFFD54F)),
+    (name: 'Crystal', emoji: '💎', color: Color(0xFF81D4FA)),
+    (name: 'Starlight', emoji: '🌟', color: Color(0xFFFFF176)),
+    (name: 'Rainbow', emoji: '🌈', color: Color(0xFFCE93D8)),
+    (name: 'Oracle Orb', emoji: '🔮', color: Color(0xFFB39DDB)),
+    (name: 'Little Planet', emoji: '🪐', color: Color(0xFFFFAB91)),
+    (name: 'Comet', emoji: '☄️', color: Color(0xFF90CAF9)),
+  ];
 
-  /// Returns the next tier item if this can be merged further.
-  MergeItem? get nextTier {
+  bool get _legendary => type == ItemType.statue;
+  int get _legendIndex => level < 1 ? 0 : level - 1;
+
+  String get displayName {
+    if (!_legendary) return type.displayName;
+    final l = _legend[_legendIndex % _legend.length];
+    final cycle = _legendIndex ~/ _legend.length;
+    return cycle == 0 ? l.name : '${l.name} ${cycle + 1}';
+  }
+
+  String get emoji =>
+      _legendary ? _legend[_legendIndex % _legend.length].emoji : type.emoji;
+
+  Color get color =>
+      _legendary ? _legend[_legendIndex % _legend.length].color : type.color;
+
+  /// Overall tier (0 = seed). Grows without limit.
+  int get tierNumber => type.index + _legendIndex;
+
+  /// The item this merges into. There is no top tier: statues keep evolving.
+  MergeItem get nextTier {
     final nextType = type.next;
-    return nextType == null ? null : MergeItem(type: nextType);
+    return nextType == null
+        ? MergeItem(type: type, level: level + 1)
+        : MergeItem(type: nextType);
   }
 
   bool canMergeWith(MergeItem other) =>

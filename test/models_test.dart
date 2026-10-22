@@ -5,16 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('MergeItem', () {
-    test('progresses seed -> statue and then stops', () {
+    test('progresses seed -> statue and then keeps evolving forever', () {
       var item = MergeItem(type: ItemType.seed);
-      var steps = 0;
-      while (item.nextTier != null) {
-        item = item.nextTier!;
-        steps++;
+      for (var i = 0; i < ItemType.values.length - 1; i++) {
+        item = item.nextTier;
       }
       expect(item.type, ItemType.statue);
-      expect(steps, ItemType.values.length - 1);
-      expect(item.isMaxTier, isTrue);
+      expect(item.level, 1);
+      for (var i = 0; i < 50; i++) {
+        item = item.nextTier;
+      }
+      expect(item.type, ItemType.statue);
+      expect(item.level, 51);
+      expect(item.displayName, isNotEmpty);
     });
 
     test('only identical type and level can merge', () {
@@ -56,6 +59,7 @@ void main() {
       expect(PlayerData(totalMerges: 5).currentLevel, 2);
       expect(PlayerData(totalMerges: 500).currentLevel, 60);
       expect(PlayerData(totalMerges: 1300).currentLevel, 100);
+      expect(PlayerData(totalMerges: 5000).currentLevel, 285); // no cap
     });
 
     test('chapters are sorted and unlock as merges grow', () {

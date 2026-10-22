@@ -72,7 +72,7 @@ class SettingsSheet extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Bloom & Bonds · v1.1.0',
+              'Bloom & Bonds · v1.2.0',
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
           ],
